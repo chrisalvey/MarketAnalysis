@@ -458,12 +458,27 @@ async function fetchNews() {
         const newsContainer = document.getElementById('newsContainer');
         newsContainer.innerHTML = '<div class="news-loading">Loading latest news...</div>';
 
-        const url = `${CONFIG.API_BASE_URL}?function=NEWS_SENTIMENT&tickers=${currentSymbol}&limit=6&apikey=${CONFIG.ALPHA_VANTAGE_API_KEY}`;
+        // Fetch news with topics related to the ticker type
+        const url = `${CONFIG.API_BASE_URL}?function=NEWS_SENTIMENT&tickers=${currentSymbol}&topics=technology,financial_markets&limit=10&apikey=${CONFIG.ALPHA_VANTAGE_API_KEY}`;
+        console.log('Fetching news from:', url.replace(CONFIG.ALPHA_VANTAGE_API_KEY, 'API_KEY'));
+
         const response = await fetch(url);
         const data = await response.json();
 
+        console.log('News API Response:', data);
+
         if (data.feed && data.feed.length > 0) {
-            displayNews(data.feed);
+            // Filter articles that mention the current symbol or show all if none match
+            const relevantArticles = data.feed.filter(article => {
+                if (!article.ticker_sentiment) return false;
+                return article.ticker_sentiment.some(t => t.ticker === currentSymbol);
+            });
+
+            const articlesToShow = relevantArticles.length > 0 ? relevantArticles.slice(0, 6) : data.feed.slice(0, 6);
+            displayNews(articlesToShow);
+        } else if (data.Information) {
+            // API limit reached
+            newsContainer.innerHTML = `<div class="news-loading">API limit reached. News will be available after cooldown period.</div>`;
         } else {
             newsContainer.innerHTML = '<div class="news-loading">No recent news available for this symbol.</div>';
         }
