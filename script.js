@@ -1,6 +1,7 @@
 // Market Analysis JavaScript - VGT Dashboard
 
 let historicalData = null;
+let currentSymbol = CONFIG.DEFAULT_TICKER;
 
 function showError(message) {
     const errorContainer = document.getElementById('errorContainer');
@@ -10,7 +11,7 @@ function showError(message) {
 
 async function fetchRealData() {
     try {
-        const url = `${CONFIG.API_BASE_URL}?function=TIME_SERIES_DAILY&symbol=${CONFIG.DEFAULT_TICKER}&outputsize=full&apikey=${CONFIG.ALPHA_VANTAGE_API_KEY}`;
+        const url = `${CONFIG.API_BASE_URL}?function=TIME_SERIES_DAILY&symbol=${currentSymbol}&outputsize=full&apikey=${CONFIG.ALPHA_VANTAGE_API_KEY}`;
         const response = await fetch(url);
         const data = await response.json();
 
@@ -80,6 +81,9 @@ async function loadAllData() {
         loadBollingerBands(historicalData, currentPrice);
         loadVolume(historicalData);
         loadSupportResistance(historicalData, currentPrice);
+
+        // Load news after technical indicators
+        fetchNews();
 
     } catch (error) {
         console.error('Error loading data:', error);
@@ -449,4 +453,115 @@ function loadSupportResistance(data, currentPrice) {
     Plotly.newPlot('sr-chart', [trace1], layout, { responsive: true });
 }
 
-window.addEventListener('load', loadAllData);
+async function fetchNews() {
+    try {
+        const newsContainer = document.getElementById('newsContainer');
+        newsContainer.innerHTML = '<div class="news-loading">Loading latest news...</div>';
+
+        const url = `${CONFIG.API_BASE_URL}?function=NEWS_SENTIMENT&tickers=${currentSymbol}&limit=6&apikey=${CONFIG.ALPHA_VANTAGE_API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.feed && data.feed.length > 0) {
+            displayNews(data.feed);
+        } else {
+            newsContainer.innerHTML = '<div class="news-loading">No recent news available for this symbol.</div>';
+        }
+    } catch (error) {
+        console.error('Error fetching news:', error);
+        const newsContainer = document.getElementById('newsContainer');
+        newsContainer.innerHTML = '<div class="news-loading">Unable to load news at this time.</div>';
+    }
+}
+
+function displayNews(articles) {
+    const newsContainer = document.getElementById('newsContainer');
+    newsContainer.innerHTML = '';
+
+    articles.forEach(article => {
+        const articleDiv = document.createElement('div');
+        articleDiv.className = 'news-article';
+
+        // Get sentiment for current symbol
+        let sentiment = 'neutral';
+        let sentimentLabel = 'Neutral';
+        if (article.ticker_sentiment) {
+            const tickerSentiment = article.ticker_sentiment.find(t => t.ticker === currentSymbol);
+            if (tickerSentiment) {
+                const score = parseFloat(tickerSentiment.ticker_sentiment_score);
+                if (score > 0.15) {
+                    sentiment = 'bullish';
+                    sentimentLabel = 'Bullish';
+                } else if (score < -0.15) {
+                    sentiment = 'bearish';
+                    sentimentLabel = 'Bearish';
+                }
+            }
+        }
+
+        // Format date
+        const dateStr = article.time_published;
+        const year = dateStr.substring(0, 4);
+        const month = dateStr.substring(4, 6);
+        const day = dateStr.substring(6, 8);
+        const formattedDate = `${month}/${day}/${year}`;
+
+        // Truncate summary if too long
+        let summary = article.summary || '';
+        if (summary.length > 200) {
+            summary = summary.substring(0, 200) + '...';
+        }
+
+        articleDiv.innerHTML = `
+            <div class="news-article-header">
+                <span class="news-source">${article.source || 'Unknown Source'}</span>
+                <span class="news-date">${formattedDate}</span>
+            </div>
+            <div class="news-title-text">${article.title}</div>
+            <div class="news-summary">${summary}</div>
+            <div class="news-footer">
+                <span class="news-sentiment sentiment-${sentiment}">${sentimentLabel}</span>
+                <a href="${article.url}" target="_blank" rel="noopener noreferrer" class="news-link">Read More →</a>
+            </div>
+        `;
+
+        newsContainer.appendChild(articleDiv);
+    });
+}
+
+function initializeSymbolSelector() {
+    const select = document.getElementById('symbolSelect');
+    select.innerHTML = '';
+
+    CONFIG.SYMBOLS.forEach(symbol => {
+        const option = document.createElement('option');
+        option.value = symbol.ticker;
+        option.textContent = `${symbol.ticker} - ${symbol.name}`;
+        if (symbol.ticker === currentSymbol) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+}
+
+function updateTickerDisplay() {
+    const symbolData = CONFIG.SYMBOLS.find(s => s.ticker === currentSymbol);
+    if (symbolData) {
+        document.getElementById('tickerInfo').textContent = `${symbolData.ticker} - ${symbolData.name}`;
+        document.getElementById('loadingText').textContent = `Loading ${symbolData.ticker} data from Alpha Vantage...`;
+        document.title = `${symbolData.ticker} - Technical Indicators Dashboard`;
+    }
+}
+
+function changeSymbol() {
+    const select = document.getElementById('symbolSelect');
+    currentSymbol = select.value;
+    updateTickerDisplay();
+    loadAllData();
+}
+
+window.addEventListener('load', function() {
+    initializeSymbolSelector();
+    updateTickerDisplay();
+    loadAllData();
+});

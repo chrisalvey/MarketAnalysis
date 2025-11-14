@@ -9,6 +9,13 @@ const CONFIG = {
     // Default ticker symbol
     DEFAULT_TICKER: 'VGT',
 
+    // Available symbols
+    SYMBOLS: [
+        { ticker: 'VGT', name: 'Vanguard Information Technology ETF' },
+        { ticker: 'QQQ', name: 'Invesco QQQ Trust' },
+        { ticker: 'SPY', name: 'SPDR S&P 500 ETF Trust' }
+    ],
+
     // API Settings
     API_BASE_URL: 'https://www.alphavantage.co/query',
 

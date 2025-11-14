@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VGT Technical Indicators Dashboard</title>
+    <title>Technical Indicators Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <div id="loadingMessage" class="loading">
-            Loading VGT data from Alpha Vantage...<br>
+            <span id="loadingText">Loading data from Alpha Vantage...</span><br>
             <small>This may take a few seconds on first load</small>
         </div>
 
@@ -18,8 +18,14 @@
 
         <div id="mainContent" style="display: none;">
             <div class="header">
+                <div class="ticker-selector">
+                    <label for="symbolSelect">Select Symbol:</label>
+                    <select id="symbolSelect" onchange="changeSymbol()">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
                 <h1>Technical Indicators Dashboard</h1>
-                <div class="ticker">VGT - Vanguard Information Technology ETF</div>
+                <div class="ticker" id="tickerInfo">VGT - Vanguard Information Technology ETF</div>
                 <div class="price-info">
                     <span id="currentPrice">$---.--</span>
                     <span id="priceChange" style="margin-left: 15px;">---%</span>
@@ -182,6 +188,14 @@
                         <h4>What This Means:</h4>
                         <p id="sr-explanation">Loading analysis...</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- News Section -->
+            <div class="news-section">
+                <h2 class="news-title">Latest News</h2>
+                <div id="newsContainer" class="news-container">
+                    <div class="news-loading">Loading news...</div>
                 </div>
             </div>
         </div>
