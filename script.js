@@ -11,36 +11,49 @@ function showError(message) {
 
 async function fetchRealData() {
     try {
-        const url = `${CONFIG.API_BASE_URL}?function=TIME_SERIES_DAILY&symbol=${currentSymbol}&outputsize=full&apikey=${CONFIG.ALPHA_VANTAGE_API_KEY}`;
+        // Check cache first
+        const cacheKey = `market_data_${currentSymbol}_${new Date().toISOString().split('T')[0]}`;
+        const cachedData = localStorage.getItem(cacheKey);
+
+        if (cachedData) {
+            console.log('Using cached data for', currentSymbol);
+            return JSON.parse(cachedData);
+        }
+
+        console.log('Fetching fresh data from Twelve Data...');
+        const url = `${CONFIG.TWELVE_DATA_BASE_URL}/time_series?symbol=${currentSymbol}&interval=1day&outputsize=500&apikey=${CONFIG.TWELVE_DATA_API_KEY}`;
         const response = await fetch(url);
         const data = await response.json();
 
-        if (data['Error Message']) {
-            throw new Error('Invalid API call or symbol not found');
+        if (data.status === 'error') {
+            throw new Error(data.message || 'Invalid API call or symbol not found');
         }
 
-        if (data['Note']) {
-            throw new Error('API call limit reached (25/day). Please try again tomorrow or wait a few minutes.');
-        }
-
-        const timeSeries = data['Time Series (Daily)'];
-        if (!timeSeries) {
+        if (!data.values) {
             throw new Error('No data returned from API');
         }
 
-        const processedData = [];
-        const dates = Object.keys(timeSeries).sort();
+        const processedData = data.values.map(dayData => ({
+            date: dayData.datetime,
+            price: parseFloat(dayData.close),
+            volume: parseInt(dayData.volume),
+            open: parseFloat(dayData.open),
+            high: parseFloat(dayData.high),
+            low: parseFloat(dayData.low)
+        })).reverse(); // Twelve Data returns newest first, we want oldest first for calculations
 
-        for (const date of dates) {
-            const dayData = timeSeries[date];
-            processedData.push({
-                date: date,
-                price: parseFloat(dayData['4. close']),
-                volume: parseInt(dayData['5. volume']),
-                open: parseFloat(dayData['1. open']),
-                high: parseFloat(dayData['2. high']),
-                low: parseFloat(dayData['3. low'])
-            });
+        // Save to cache
+        try {
+            // Clear old cache items to prevent storage limit errors
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('market_data_') && key !== cacheKey) {
+                    localStorage.removeItem(key);
+                }
+            }
+            localStorage.setItem(cacheKey, JSON.stringify(processedData));
+        } catch (e) {
+            console.warn('Failed to cache data:', e);
         }
 
         return processedData;
@@ -459,7 +472,7 @@ async function fetchNews() {
         newsContainer.innerHTML = '<div class="news-loading">Loading latest news...</div>';
 
         // Fetch general financial/tech news (NEWS_SENTIMENT has limitations with ETF tickers)
-        const url = `${CONFIG.API_BASE_URL}?function=NEWS_SENTIMENT&topics=technology&sort=LATEST&limit=6&apikey=${CONFIG.ALPHA_VANTAGE_API_KEY}`;
+        const url = `${CONFIG.ALPHA_VANTAGE_BASE_URL}?function=NEWS_SENTIMENT&topics=technology&sort=LATEST&limit=6&apikey=${CONFIG.ALPHA_VANTAGE_API_KEY}`;
         console.log('Fetching news from:', url.replace(CONFIG.ALPHA_VANTAGE_API_KEY, 'API_KEY'));
 
         const response = await fetch(url);
@@ -566,7 +579,7 @@ function changeSymbol() {
     loadAllData();
 }
 
-window.addEventListener('load', function() {
+window.addEventListener('load', function () {
     initializeSymbolSelector();
     updateTickerDisplay();
     loadAllData();

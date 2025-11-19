@@ -57,3 +57,6 @@ coverage/
 # Misc
 *.bak
 *.backup
+
+# Local Configuration
+config.js

@@ -2,9 +2,13 @@
 // Copy this file to config.js and add your API keys
 
 const CONFIG = {
-    // Alpha Vantage API Key
+    // Alpha Vantage API Key (Keep for News)
     // Get your free API key at: https://www.alphavantage.co/support/#api-key
-    ALPHA_VANTAGE_API_KEY: 'YOUR_API_KEY_HERE',
+    ALPHA_VANTAGE_API_KEY: 'YOUR_ALPHA_VANTAGE_KEY',
+
+    // Twelve Data API Key (For Price Data)
+    // Get your free API key at: https://twelvedata.com/
+    TWELVE_DATA_API_KEY: 'YOUR_TWELVE_DATA_KEY',
 
     // Default ticker symbol
     DEFAULT_TICKER: 'VGT',
@@ -17,7 +21,8 @@ const CONFIG = {
     ],
 
     // API Settings
-    API_BASE_URL: 'https://www.alphavantage.co/query',
+    ALPHA_VANTAGE_BASE_URL: 'https://www.alphavantage.co/query',
+    TWELVE_DATA_BASE_URL: 'https://api.twelvedata.com',
 
     // Chart settings
     CHART_DAYS_DISPLAYED: {
